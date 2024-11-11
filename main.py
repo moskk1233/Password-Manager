@@ -1,5 +1,6 @@
 import os
 import uuid
+import pyperclip
 from cryptography.fernet import Fernet
 from logger import logger
 
@@ -36,7 +37,7 @@ def load_key() -> bytes:
         raise SystemExit(1)
     return key
 
-def add_password(fernet: Fernet) -> None:
+def add_password() -> None:
     try:
         platform = input("Platform / Web: ")
         password_id = str(uuid.uuid4())
@@ -47,16 +48,33 @@ def add_password(fernet: Fernet) -> None:
     except Exception as e:
         logger.error(f"Error when try to add password: {e}")
 
-def view_password(fernet: Fernet) -> None:
+def view_password() -> None:
+    try:
+        with open(__PASSWORDFILENAME, "r") as f:
+            for line in f.readlines():
+                uid, platform, username, _ = line.strip().split("|")
+                print(f"ID: {uid}")
+                print(f'Platform / Web: {platform}')
+                print(f'Username: {username}')
+                print(f'Password: ******')
+                print("==========================================================")
+    except Exception as e:
+        logger.error(f"Error when try to view password: {e}")
+
+def copy_password():
+    id_password = str(input("ID: "))
     try:
         with open(__PASSWORDFILENAME, "r") as f:
             for line in f.readlines():
                 uid, platform, username, password = line.strip().split("|")
-                print(f"ID: {uid}")
-                print(f'Platform / Web: {platform}')
-                print(f'Username: {username}')
-                print(f'Password: {fernet.decrypt(password.encode()).decode()}')
-                print("==========================================================")
+                if uid == id_password:
+                    print(f'Platform / Web: {platform}')
+                    print(f'Username: {username}')
+                    print(f'Password: {fernet.decrypt(password.encode()).decode()}')
+                    pyperclip.copy(fernet.decrypt(password.encode()).decode())
+                    print('Password copied to clipboard')
+                    return
+            logger.error("Cannot find ID")
     except Exception as e:
         logger.error(f"Error when try to view password: {e}")
 
@@ -74,13 +92,15 @@ if __name__ == "__main__":
     while True:
         try:
             mode = input(
-                "Would you like to add a new password or view existing password (view, add), press q for quit: "
+                "Would you like to add a new password or view existing password ([v]iew, [a]dd, [c]opy), or [q]uit: "
             ).lower()
 
             if mode == 'add' or mode == 'a':
-                add_password(fernet)
+                add_password()
             elif mode == 'view' or mode == 'v':
-                view_password(fernet)
+                view_password()
+            elif mode == 'copy' or mode == 'c':
+                copy_password()
             elif mode == 'quit' or mode == 'q':
                 break
             else:
